@@ -112,6 +112,7 @@
     <orderEntry type="library" scope="TEST" name="Maven: com.barchart.udt:barchart-udt-bundle:2.3.0" level="project" />
     <orderEntry type="library" scope="TEST" name="Maven: com.codeborne:phantomjsdriver:1.4.3" level="project" />
     <orderEntry type="library" name="Maven: commons-codec:commons-codec:1.10" level="project" />
+    <orderEntry type="library" name="Maven: net.sourceforge.javacsv:javacsv:2.0" level="project" />
     <orderEntry type="library" name="Maven: org.slf4j:slf4j-api:1.5.5" level="project" />
   </component>
 </module>

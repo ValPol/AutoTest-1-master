@@ -1,135 +1,150 @@
 package PageObjects;
-
-
-import Controls.Grid;
 import DTO.FilterDTO;
+import com.codeborne.selenide.Configuration;
 import com.codeborne.selenide.SelenideElement;
-import org.openqa.selenium.By;
+import com.csvreader.CsvWriter;
+import com.google.common.base.Function;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.FindBy;
-import org.openqa.selenium.support.PageFactory;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.util.List;
-
-import static com.codeborne.selenide.Condition.disappear;
 import static com.codeborne.selenide.Condition.enabled;
-import static com.codeborne.selenide.Condition.exist;
-import static com.codeborne.selenide.Selenide.$;
-import static com.codeborne.selenide.Selenide.open;
+import static com.codeborne.selenide.Condition.exactText;
+import static com.codeborne.selenide.Condition.exactValue;
+import static com.codeborne.selenide.WebDriverRunner.getWebDriver;
+
 
 public class PurchasePage {
 
     @FindBy(id = "BaseMainContent_MainContent_chkPurchaseType_0")
-    public  SelenideElement cb223;
+    public  SelenideElement cbIs223Purchase;
 
     @FindBy(id = "BaseMainContent_MainContent_chkPurchaseType_1")
-    public  SelenideElement cbcz;
-
-//   @FindBy(id = "BaseMainContent_MainContent_txtStartPrice_txtRangeFrom")
- //  public WebElement txfrom;
+    public  SelenideElement cbIsCommercialPurchase;
 
     @FindBy(id = "BaseMainContent_MainContent_btnSearch")
-    public SelenideElement btEnt;
-
-    @FindBy(id = "load_BaseMainContent_MainContent_jqgTrade")
-    public SelenideElement displayState;
-
-    @FindBy(name = "BaseMainContent_MainContent_jqgTrade")
-    public SelenideElement table_element;
+    public SelenideElement btnSearch;
 
     @FindBy(xpath ="//*[@aria-describedby='BaseMainContent_MainContent_jqgTrade_OosNumber']")
-    public List<SelenideElement> tblIEC;
+    public List<SelenideElement> colEISNumber;
 
     @FindBy(xpath ="//*[@aria-describedby='BaseMainContent_MainContent_jqgTrade_LotStateString']")
-    public List<SelenideElement> tblStLot;
+    public List<SelenideElement> colLotState;
 
     @FindBy(xpath ="//*[@aria-describedby='BaseMainContent_MainContent_jqgTrade_StartPrice']")
-    public List<SelenideElement> tblSum;
+    public List<SelenideElement> colSumm;
 
+    @FindBy(xpath ="//*[@name='ctl00$ctl00$BaseMainContent$MainContent$txtStartPrice$txtRangeFrom']")
+    public SelenideElement startPriceFrom;
+
+    @FindBy(xpath ="//*[@id='BaseMainContent_MainContent_txtPublicationDate_txtDateFrom']")
+    public SelenideElement publicationDateFrom;
+
+    @FindBy(xpath ="//*[@id='BaseMainContent_MainContent_txtPublicationDate_txtDateTo']")
+    public SelenideElement publicationDateTo;
+
+    @FindBy(xpath ="//*[@id='sp_1_BaseMainContent_MainContent_jqgTrade_toppager']")
+    public SelenideElement lblTotalRecordsCountInPager;
+
+    @FindBy(xpath ="//*[@id='next_t_BaseMainContent_MainContent_jqgTrade_toppager']")
+    public SelenideElement btnNextRecordInPager;
+
+    @FindBy(xpath ="//*[@class='ui-pg-input']")
+    public SelenideElement edtPageNumberInPager;
 
     @FindBy(xpath ="//*[@class='ui-pg-selbox']")
-    public SelenideElement pgCount;
+    public SelenideElement selectRecordsCountInPager;
 
-    @FindBy(xpath ="//*[@id='BaseMainContent_MainContent_jqgTrade']")
-    public Grid purchasedGrid;
+    @FindBy(xpath ="//*[@id='gview_BaseMainContent_MainContent_jqgTrade']")
+    public SelenideElement gridPurchases;
 
+    @FindBy(xpath ="//*[@class='filter']")
+    public SelenideElement pnlPurchasesGridFilter;
 
-
-
-    public PurchasePage (WebDriver driver)
-    {
-      //  driver.
-        open("https://223.rts-tender.ru/supplier/auction/Trade/Search.aspx", PurchasePage.class);
-        // PageFactory.initElements(driver, this);
-    }
+    @FindBy(xpath ="//*[@class='ui-paging-info']")
+    public SelenideElement lblPagingInfo;
 
     public void setFilter (FilterDTO dto){
-
-        cb223.click();
-        cbcz.click();
-        $(By.name("ctl00$ctl00$BaseMainContent$MainContent$txtStartPrice$txtRangeFrom")).setValue(dto.startPriceFrom).pressEnter();
-        $(By.id("BaseMainContent_MainContent_txtPublicationDate_txtDateFrom")).setValue(dto.publishDateFrom).pressEnter();
-        $(By.id("BaseMainContent_MainContent_txtPublicationDate_txtDateTo")).setValue(dto.publishDateTo).pressEnter();
-
+        pnlPurchasesGridFilter.shouldBe(enabled);
+        cbIs223Purchase.click();
+        cbIsCommercialPurchase.click();
+        startPriceFrom.setValue(dto.startPriceFrom).pressEnter();
+        publicationDateFrom.setValue(dto.publishDateFrom).pressEnter();
+        publicationDateTo.setValue(dto.publishDateTo).pressEnter();
     }
 
-    public void setGridDisplayedRecordsCount(String count){
-        String classTxNow = "ui-pg-input";
-        $(By.className("ui-pg-selbox")).selectOptionContainingText(count);
+    public void findRecords() throws Exception {
+        btnSearch.shouldBe(enabled);
+        btnSearch.click();
+        WaitForGridContentIsChanged();
+        setGridDisplayedRecordsCount("100");
     }
 
-    public void findRecords()  {
-        btEnt.shouldBe(enabled);
-        btEnt.click();
-        tblIEC.get(0).shouldNot(exist);
-        tblIEC.get(0).should(enabled);
-    }
+    public void evaluateStartPriceSum() throws InterruptedException, StaleElementReferenceException, IOException {
+        gridPurchases.shouldBe(enabled);
+        BigDecimal currencySumm = new BigDecimal(0);
+        try {
+            CsvWriter csvOutput = new CsvWriter(new FileWriter("out.csv", true), ',');
+            do {
+                gridPurchases.shouldBe(enabled);
+                Thread.sleep(1000); //заменить относительной задержкой
+                System.out.println("ALL pages" + lblTotalRecordsCountInPager.getText());
+                System.out.println("current page" + edtPageNumberInPager.val());
+                for (int i = 0; i < colEISNumber.size(); i++) {
+                    String eisNumberColumnText = colEISNumber.get(i).getText();
+                    if ((eisNumberColumnText.toCharArray().length != 1) && (colLotState.get(i).getText().compareTo("Отменена") != 0)) {
+                        System.out.println(i + " line " + colEISNumber.get(i).getText());
+                        csvOutput.write(colEISNumber.get(i).getText());
+                        System.out.println(colLotState.get(i).getText());
+                        csvOutput.write(colLotState.get(i).getText());
+                        String currencyCurrentText = clearCurrencyText(colSumm.get(i).getText());
+                        currencySumm = currencySumm.add(new BigDecimal(currencyCurrentText));
+                        System.out.println(currencySumm);
+                        csvOutput.write(currencySumm.toString());
+                        csvOutput.endRecord();
+                    }
+                }
+                btnNextRecordInPager.click();
 
-    public String parseMoney(String str){
+            }
+            while (Integer.parseInt(lblTotalRecordsCountInPager.getText()) > Integer.parseInt(edtPageNumberInPager.val()));
+            csvOutput.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private String clearCurrencyText(String str){
         String money = str.replaceAll(" руб.", "");
-               money = money.replaceAll(" ", "");
-               money = money.replaceAll(",", ".");
+        money = money.replaceAll(" ", "");
+        money = money.replaceAll(",", ".");
         return money;
     }
 
-    public void evaluateStartPriceSum() throws InterruptedException {
-
-        String idTxAll = "sp_1_BaseMainContent_MainContent_jqgTrade_toppager";
-        String classTxNow = "ui-pg-input";
-
-        List<SelenideElement> numInEIC = tblIEC;
-        List<SelenideElement> numStLot = tblStLot;
-        List<SelenideElement> numSum = tblSum;
-
-        Thread.sleep(10000);
-
-        BigDecimal sum = new BigDecimal(0);
-
-        do{
-            Thread.sleep(10000);
-            System.out.println("ALL pages"+$(By.id(idTxAll)).getText());
-            System.out.println("current page"+$(By.className(classTxNow)).val());
-            for (int i=0;i<numInEIC.size();i++)
-            {
-                String s = numInEIC.get(i).getText();
-
-                if ((s.toCharArray().length!=1)&&(numStLot.get(i).getText().compareTo("Отменена")!=0)){
-                    System.out.println(i+" line "+numInEIC.get(i).getText());
-                    System.out.println(numStLot.get(i).getText());
-                    String str =parseMoney(numSum.get(i).getText());
-                    sum = sum.add(new BigDecimal(str));
-                    System.out.println(sum);
-                }
-            }
-            $(By.id("next_t_BaseMainContent_MainContent_jqgTrade_toppager")).click();
-        }
-        while (Integer.parseInt($(By.id("sp_1_BaseMainContent_MainContent_jqgTrade_toppager")).getText())>Integer.parseInt($(By.className(classTxNow)).val()));
-
+    private void setGridDisplayedRecordsCount(String count) throws InterruptedException {
+        selectRecordsCountInPager.shouldBe(enabled);
+        selectRecordsCountInPager.selectOptionContainingText(count);
+        Thread.sleep(1000);
     }
 
-
+    private void WaitForGridContentIsChanged() throws Exception {
+        WebDriver driver = getWebDriver();
+        (new WebDriverWait(driver, Configuration.timeout)).until(new Function<WebDriver, Boolean>() {
+            public Boolean apply(WebDriver webDriver) {
+               return colEISNumber.size() == 0;
+            }
+        });
+        (new WebDriverWait(driver, Configuration.timeout)).until(new Function<WebDriver, Boolean>() {
+            public Boolean apply(WebDriver webDriver) {
+                return colEISNumber.size() != 0;
+            }
+        });
+    }
 }
 
 
